@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA Profile Manager Pro</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/panels.css">
+</head>
+<body>
+    <!-- Title Bar -->
+    <header class="titlebar">
+        <div class="titlebar-left">
+            <svg class="nvidia-logo" viewBox="0 0 24 24" width="28" height="28">
+                <path fill="#76B900" d="M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.417 3.394 6.417 3.394s-2.728 3.867-5.648 3.867c-.438 0-.85-.07-1.193-.209v-4.473c1.782.209 2.14.984 3.225 2.49l2.392-2.004s-1.927-2.283-4.474-2.283c-.424 0-.81.044-1.143.123v-.457zM8.948 5.088v1.28c.383-.07.77-.106 1.165-.106 4.573 0 7.578 3.95 7.578 3.95s-3.487 4.852-7.165 4.852c-.556 0-1.074-.088-1.578-.244v1.358c.44.1.903.158 1.387.158 3.74 0 6.461-1.9 9.09-4.283.434.356 2.21 1.196 2.575 1.564-2.532 2.094-8.378 4.147-11.582 4.147-.52 0-1-.05-1.47-.144v1.9H4.834V5.088h4.114zM4.834 13.402v1.468c-2.266-.96-3.024-3.29-3.024-3.29s1.674-1.848 3.024-2.176v1.564l-.03.002c-1.15-.476-2.03 1.048-2.03 1.048s.547 1.088 2.06 1.384z"/>
+            </svg>
+            <h1 class="titlebar-title">NVIDIA Profile Manager <span class="version">Pro v2.0</span></h1>
+        </div>
+        <div class="titlebar-right">
+            <div class="driver-badge">
+                <span class="badge-label">Driver</span>
+                <span class="badge-value" id="driverVersion">560.94</span>
+            </div>
+            <div class="driver-badge">
+                <span class="badge-label">Profiles</span>
+                <span class="badge-value" id="profileCount">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toolbar -->
+    <nav class="toolbar">
+        <div class="toolbar-group">
+            <button class="toolbar-btn" id="btnNewProfile" title="New Profile">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>New</span>
+            </button>
+            <button class="toolbar-btn" id="btnDuplicateProfile" title="Duplicate Profile">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                <span>Duplicate</span>
+            </button>
+            <button class="toolbar-btn danger" id="btnDeleteProfile" title="Delete Profile">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                <span>Delete</span>
+            </button>
+            <div class="toolbar-separator"></div>
+            <button class="toolbar-btn" id="btnImport" title="Import Profile">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                <span>Import</span>
+            </button>
+            <button class="toolbar-btn" id="btnExport" title="Export Profile">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg>
+                <span>Export</span>
+            </button>
+        </div>
+        <div class="toolbar-group">
+            <button class="toolbar-btn primary" id="btnApply" title="Apply Changes">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <span>Apply</span>
+            </button>
+            <button class="toolbar-btn" id="btnRevert" title="Revert Changes">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                <span>Revert</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Left Sidebar: Profile List -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Profiles</h2>
+                <span class="profile-count" id="sidebarProfileCount">0</span>
+            </div>
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="profileSearch" placeholder="Search profiles..." autocomplete="off">
+            </div>
+            <div class="profile-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="custom">Custom</button>
+                <button class="filter-btn" data-filter="modified">Modified</button>
+            </div>
+            <ul class="profile-list" id="profileList">
+                <!-- Profiles loaded dynamically -->
+            </ul>
+        </aside>
+
+        <!-- Center: Settings Panel -->
+        <section class="settings-panel">
+            <!-- Settings Header -->
+            <div class="settings-header" id="settingsHeader">
+                <div class="settings-header-info">
+                    <h2 id="selectedProfileName">Select a Profile</h2>
+                    <span class="profile-path" id="selectedProfilePath">Choose a profile from the list to edit settings</span>
+                </div>
+                <div class="settings-header-actions">
+                    <button class="icon-btn" id="btnExpandAll" title="Expand All">
+                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/></svg>
+                    </button>
+                    <button class="icon-btn" id="btnCollapseAll" title="Collapse All">
+                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7.41 18.59L8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z"/></svg>
+                    </button>
+                    <select id="settingViewMode" class="settings-view-select">
+                        <option value="modified">Show Modified</option>
+                        <option value="all" selected>Show All</option>
+                        <option value="custom">Show Custom Only</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Settings Categories Tabs -->
+            <div class="category-tabs" id="categoryTabs">
+                <button class="category-tab active" data-category="all">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                    All Settings
+                </button>
+                <button class="category-tab" data-category="rendering">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>
+                    Rendering
+                </button>
+                <button class="category-tab" data-category="antialiasing">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    Anti-Aliasing
+                </button>
+                <button class="category-tab" data-category="texture">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                    Texture
+                </button>
+                <button class="category-tab" data-category="sync">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                    Sync & Refresh
+                </button>
+                <button class="category-tab" data-category="sli">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/></svg>
+                    SLI
+                </button>
+                <button class="category-tab" data-category="power">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                    Power
+                </button>
+                <button class="category-tab" data-category="other">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    Other
+                </button>
+            </div>
+
+            <!-- Settings Content -->
+            <div class="settings-content" id="settingsContent">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" width="64" height="64"><path fill="#555" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    <p>Select a profile to view and edit settings</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Sidebar: Info Panel -->
+        <aside class="info-panel">
+            <div class="info-section">
+                <h3>System Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">GPU</span>
+                        <span class="info-value" id="gpuName">NVIDIA GeForce RTX 4090</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">VRAM</span>
+                        <span class="info-value" id="gpuVram">24 GB GDDR6X</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Driver</span>
+                        <span class="info-value" id="gpuDriver">560.94</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">CUDA</span>
+                        <span class="info-value" id="gpuCuda">12.6</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>Setting Details</h3>
+                <div id="settingDetails" class="setting-details">
+                    <p class="muted">Hover over a setting to see details</p>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>Quick Presets</h3>
+                <div class="preset-list">
+                    <button class="preset-btn" data-preset="performance">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+                        Max Performance
+                    </button>
+                    <button class="preset-btn" data-preset="quality">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        Max Quality
+                    </button>
+                    <button class="preset-btn" data-preset="balanced">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        Balanced
+                    </button>
+                    <button class="preset-btn" data-preset="default">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                        Reset Default
+                    </button>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>Change Log</h3>
+                <div class="changelog" id="changelog">
+                    <p class="muted">No changes recorded yet</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="statusbar">
+        <div class="statusbar-left">
+            <span class="status-indicator online"></span>
+            <span id="statusText">Ready</span>
+        </div>
+        <div class="statusbar-center">
+            <span id="modifiedCount">0 modified settings</span>
+        </div>
+        <div class="statusbar-right">
+            <span>NVIDIA Profile Manager Pro v2.0</span>
+        </div>
+    </footer>
+
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Modal</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
