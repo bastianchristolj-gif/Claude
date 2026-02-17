@@ -17,9 +17,145 @@ class NvidiaProfileManager {
 
     init() {
         this.loadProfiles();
+        this.loadCustomPresets();
         this.bindEvents();
         this.renderProfileList();
         this.updateCounts();
+        this.startGpuMonitor();
+        this.settingsSearch = '';
+        this.connectAPI();
+    }
+
+    // ============================================
+    // API Integration
+    // ============================================
+
+    async connectAPI() {
+        const api = window.nvidiaAPI;
+        if (!api) {
+            this.updateApiStatus(false);
+            return;
+        }
+
+        const status = await api.checkConnection();
+        if (status) {
+            this.updateApiStatus(true, status);
+            await this.loadRealGpuInfo();
+            await this.syncProfilesWithServer();
+            // Switch monitor to real data if GPU detected
+            if (api.gpuReal) {
+                this.useRealMonitor = true;
+            }
+        } else {
+            this.updateApiStatus(false);
+        }
+    }
+
+    updateApiStatus(connected, status) {
+        const dot = document.getElementById('apiDot');
+        const label = document.getElementById('apiStatus');
+        const gpuLabel = document.getElementById('gpuDetected');
+
+        if (connected) {
+            dot.className = 'api-dot online';
+            label.textContent = 'Connected';
+            if (status && status.gpu_available) {
+                gpuLabel.textContent = 'Detected';
+                gpuLabel.style.color = 'var(--nvidia-green)';
+            } else {
+                gpuLabel.textContent = 'Simulated';
+                gpuLabel.style.color = 'var(--text-warning)';
+            }
+        } else {
+            dot.className = 'api-dot offline';
+            label.textContent = 'Offline';
+            gpuLabel.textContent = 'Simulated';
+            gpuLabel.style.color = 'var(--text-muted)';
+        }
+    }
+
+    async loadRealGpuInfo() {
+        const api = window.nvidiaAPI;
+        if (!api) return;
+
+        const info = await api.getGpuInfo();
+        if (info) {
+            document.getElementById('gpuName').textContent = info.name || 'N/A';
+            document.getElementById('gpuVram').textContent = info.vram_total_gb || 'N/A';
+            document.getElementById('gpuDriver').textContent = info.driver_version || 'N/A';
+            document.getElementById('gpuCuda').textContent = info.cuda_version || 'N/A';
+            document.getElementById('driverVersion').textContent = info.driver_version || '---';
+
+            if (info.real) {
+                this.showToast('Real GPU detected: ' + info.name, 'success');
+                this.setStatus('Connected to ' + info.name);
+            }
+        }
+    }
+
+    async syncProfilesWithServer() {
+        const api = window.nvidiaAPI;
+        if (!api || !api.connected) return;
+
+        const result = await api.syncProfiles(this.profiles);
+        if (result.profiles) {
+            this.profiles = result.profiles;
+            localStorage.setItem('nvidia_profiles', JSON.stringify(this.profiles));
+            this.renderProfileList();
+            this.updateCounts();
+        }
+
+        // Also sync custom presets
+        const presetResult = await api.getCustomPresets();
+        if (presetResult.source === 'server' && Object.keys(presetResult.presets).length > 0) {
+            // Merge server presets with local
+            this.customPresets = { ...presetResult.presets, ...this.customPresets };
+            this.saveCustomPresets();
+            this.renderCustomPresets();
+        }
+    }
+
+    async applyToGpu() {
+        if (!this.selectedProfile) {
+            this.showToast('Select a profile first', 'warning');
+            return;
+        }
+
+        const api = window.nvidiaAPI;
+        if (!api || !api.connected) {
+            this.showToast('API server not connected. Start with: npm start', 'error');
+            return;
+        }
+
+        // Collect all current settings for this profile
+        const settingsToApply = {};
+        const allSettings = this.getAllSettings();
+        for (const setting of allSettings) {
+            const val = this.getSettingValue(setting.id);
+            if (val !== setting.defaultValue) {
+                settingsToApply[setting.id] = val;
+            }
+        }
+
+        this.setStatus('Applying settings to GPU...');
+        this.showToast('Sending settings to GPU driver...', 'info');
+
+        const result = await api.applyProfileToGpu(settingsToApply);
+
+        if (result.real) {
+            this.showToast(
+                `Applied ${result.applied_count}/${result.total} settings to GPU`,
+                result.applied_count > 0 ? 'success' : 'warning'
+            );
+            this.addChangeLogEntry('GPU Apply', `${result.applied_count} settings`);
+        } else {
+            const mappedCount = result.results ? result.results.filter(r => r.attr).length : 0;
+            this.showToast(
+                `GPU driver not available. ${mappedCount} settings mapped but not applied.`,
+                'warning'
+            );
+        }
+        this.setStatus('Ready');
     }
 
     // ============================================
@@ -41,6 +177,11 @@ class NvidiaProfileManager {
 
     saveProfiles() {
         localStorage.setItem('nvidia_profiles', JSON.stringify(this.profiles));
+        // Also persist to server if connected
+        const api = window.nvidiaAPI;
+        if (api && api.connected) {
+            api.saveProfiles(this.profiles);
+        }
     }
 
     getProfileIcon(profile) {
@@ -203,6 +344,9 @@ class NvidiaProfileManager {
             } else if (viewMode === 'custom') {
                 settings = settings.filter(s => this.selectedProfile.settings.hasOwnProperty(s.id));
             }
+
+            // Filter by settings search
+            settings = this.filterSettingsBySearch(settings);
 
             if (settings.length === 0) continue;
 
@@ -426,6 +570,336 @@ class NvidiaProfileManager {
                 </div>
             </div>
         `;
+    }
+
+    // ============================================
+    // GPU Monitor (Real + Simulated fallback)
+    // ============================================
+
+    startGpuMonitor() {
+        this.useRealMonitor = false;
+        this.gpuState = {
+            usage: 15, vram: 2.1, temp: 42, coreClock: 210,
+            fan: 30, power: 45, vramTotal: 24
+        };
+        this.updateGpuMonitor();
+        this.gpuMonitorInterval = setInterval(() => this.updateGpuMonitor(), 2000);
+    }
+
+    async updateGpuMonitor() {
+        const s = this.gpuState;
+
+        // Try real data from API
+        if (this.useRealMonitor && window.nvidiaAPI && window.nvidiaAPI.connected) {
+            const data = await window.nvidiaAPI.getGpuMonitor();
+            if (data) {
+                s.usage = data.gpu_utilization || 0;
+                s.vram = parseFloat(data.memory_used) || 0;
+                s.vramTotal = (parseInt(data.memory_total) || 24576) / 1024;
+                s.temp = data.temperature || 0;
+                s.coreClock = data.core_clock || 0;
+                s.fan = data.fan_speed || 0;
+                s.power = parseFloat(data.power_draw) || 0;
+                this.renderMonitorBars(s);
+                return;
+            }
+        }
+
+        // Fallback: simulated data
+        const hasActiveProfile = this.selectedProfile && this.selectedProfile.type === 'game';
+        const baseUsage = hasActiveProfile ? 72 : 15;
+        const baseVram = hasActiveProfile ? 14.2 : 2.1;
+        const baseTemp = hasActiveProfile ? 71 : 42;
+        const baseClock = hasActiveProfile ? 2520 : 210;
+        const baseFan = hasActiveProfile ? 62 : 30;
+        const basePower = hasActiveProfile ? 285 : 45;
+
+        s.usage = Math.min(100, Math.max(0, baseUsage + (Math.random() - 0.5) * 12));
+        s.vram = Math.min(24, Math.max(0.5, baseVram + (Math.random() - 0.5) * 1.5));
+        s.vramTotal = 24;
+        s.temp = Math.min(95, Math.max(30, baseTemp + (Math.random() - 0.5) * 6));
+        s.coreClock = Math.max(210, baseClock + Math.round((Math.random() - 0.5) * 80));
+        s.fan = Math.min(100, Math.max(25, baseFan + (Math.random() - 0.5) * 8));
+        s.power = Math.min(450, Math.max(30, basePower + (Math.random() - 0.5) * 30));
+
+        this.renderMonitorBars(s);
+    }
+
+    renderMonitorBars(s) {
+        const setBar = (id, pct) => {
+            const el = document.getElementById(id);
+            if (el) el.style.width = Math.min(100, Math.max(0, pct)) + '%';
+        };
+
+        setBar('monGpuUsage', s.usage);
+        setBar('monVram', (s.vram / s.vramTotal) * 100);
+        setBar('monTemp', (s.temp / 95) * 100);
+        setBar('monCoreClock', (s.coreClock / 2800) * 100);
+        setBar('monFan', s.fan);
+        setBar('monPower', (s.power / 450) * 100);
+
+        const setVal = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        };
+
+        setVal('monGpuUsageVal', Math.round(s.usage) + '%');
+        setVal('monVramVal', s.vram.toFixed(1) + '/' + Math.round(s.vramTotal) + ' GB');
+        setVal('monTempVal', Math.round(s.temp) + '\u00B0C');
+        setVal('monCoreClockVal', Math.round(s.coreClock) + ' MHz');
+        setVal('monFanVal', Math.round(s.fan) + '%');
+        setVal('monPowerVal', Math.round(s.power) + 'W');
+
+        // Temperature color coding
+        const tempBar = document.getElementById('monTemp');
+        if (tempBar) {
+            tempBar.classList.remove('warn', 'critical');
+            if (s.temp >= 85) tempBar.classList.add('critical');
+            else if (s.temp >= 72) tempBar.classList.add('warn');
+        }
+    }
+
+    // ============================================
+    // Custom Presets
+    // ============================================
+
+    loadCustomPresets() {
+        const saved = localStorage.getItem('nvidia_custom_presets');
+        if (saved) {
+            try {
+                this.customPresets = JSON.parse(saved);
+            } catch {
+                this.customPresets = {};
+            }
+        } else {
+            this.customPresets = {};
+        }
+    }
+
+    saveCustomPresets() {
+        localStorage.setItem('nvidia_custom_presets', JSON.stringify(this.customPresets));
+        const api = window.nvidiaAPI;
+        if (api && api.connected) {
+            api.saveCustomPresets(this.customPresets);
+        }
+    }
+
+    saveCurrentAsPreset() {
+        if (!this.selectedProfile) {
+            this.showToast('Select a profile first', 'warning');
+            return;
+        }
+
+        this.showModal('Save Custom Preset', `
+            <div class="form-group">
+                <label class="form-label">Preset Name</label>
+                <input type="text" class="form-input" id="customPresetName" placeholder="e.g., My Competitive Settings">
+            </div>
+            <p style="color: var(--text-secondary); font-size: 11px;">This will save all current setting values (including unsaved changes) as a reusable preset.</p>
+        `, [
+            { label: 'Cancel', class: 'btn', action: () => this.closeModal() },
+            { label: 'Save Preset', class: 'btn btn-primary', action: () => this.confirmSavePreset() }
+        ]);
+    }
+
+    confirmSavePreset() {
+        const name = document.getElementById('customPresetName').value.trim();
+        if (!name) {
+            this.showToast('Preset name is required', 'error');
+            return;
+        }
+
+        const presetSettings = {};
+        const allSettings = this.getAllSettings();
+        for (const setting of allSettings) {
+            const val = this.getSettingValue(setting.id);
+            if (val !== setting.defaultValue) {
+                presetSettings[setting.id] = val;
+            }
+        }
+
+        const presetId = 'custom_preset_' + Date.now();
+        this.customPresets[presetId] = { name, settings: presetSettings };
+        this.saveCustomPresets();
+        this.renderCustomPresets();
+        this.closeModal();
+        this.showToast(`Preset "${name}" saved`, 'success');
+    }
+
+    deleteCustomPreset(presetId) {
+        const preset = this.customPresets[presetId];
+        if (!preset) return;
+        delete this.customPresets[presetId];
+        this.saveCustomPresets();
+        this.renderCustomPresets();
+        this.showToast(`Preset "${preset.name}" deleted`, 'success');
+    }
+
+    applyCustomPreset(presetId) {
+        if (!this.selectedProfile) {
+            this.showToast('Select a profile first', 'warning');
+            return;
+        }
+        const preset = this.customPresets[presetId];
+        if (!preset) return;
+
+        for (const [id, value] of Object.entries(preset.settings)) {
+            this.modifiedSettings[id] = value;
+        }
+
+        this.renderSettings();
+        this.updateCounts();
+        this.showToast(`Preset "${preset.name}" applied (not yet saved)`, 'info');
+        this.addChangeLogEntry('Custom Preset', preset.name);
+    }
+
+    renderCustomPresets() {
+        const container = document.getElementById('customPresetList');
+        if (!container) return;
+
+        const presetIds = Object.keys(this.customPresets);
+        if (presetIds.length === 0) {
+            container.innerHTML = '<p class="muted" style="font-size: 11px; font-style: italic;">No custom presets saved yet</p>';
+            return;
+        }
+
+        container.innerHTML = presetIds.map(id => {
+            const preset = this.customPresets[id];
+            const settingCount = Object.keys(preset.settings).length;
+            return `
+                <div class="custom-preset-item" data-preset-id="${id}">
+                    <button class="preset-btn custom-preset-apply" data-custom-preset="${id}">
+                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                        <span class="custom-preset-name">${this.escapeHtml(preset.name)}</span>
+                        <span class="custom-preset-count">${settingCount}</span>
+                    </button>
+                    <button class="custom-preset-delete" data-delete-preset="${id}" title="Delete preset">
+                        <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        // Bind events
+        container.querySelectorAll('.custom-preset-apply').forEach(btn => {
+            btn.addEventListener('click', () => this.applyCustomPreset(btn.dataset.customPreset));
+        });
+        container.querySelectorAll('.custom-preset-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteCustomPreset(btn.dataset.deletePreset);
+            });
+        });
+    }
+
+    // ============================================
+    // Profile Comparison
+    // ============================================
+
+    showCompareDialog() {
+        if (this.profiles.length < 2) {
+            this.showToast('Need at least 2 profiles to compare', 'warning');
+            return;
+        }
+
+        const options = this.profiles.map(p =>
+            `<option value="${p.id}"${this.selectedProfile && this.selectedProfile.id === p.id ? ' selected' : ''}>${this.escapeHtml(p.name)}</option>`
+        ).join('');
+
+        const secondOptions = this.profiles.map((p, i) =>
+            `<option value="${p.id}"${i === 1 ? ' selected' : ''}>${this.escapeHtml(p.name)}</option>`
+        ).join('');
+
+        this.showModal('Compare Profiles', `
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Profile A</label>
+                    <select class="form-select" id="compareProfileA">${options}</select>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Profile B</label>
+                    <select class="form-select" id="compareProfileB">${secondOptions}</select>
+                </div>
+            </div>
+            <div id="compareResult" style="max-height: 400px; overflow-y: auto;"></div>
+        `, [
+            { label: 'Close', class: 'btn', action: () => this.closeModal() },
+            { label: 'Compare', class: 'btn btn-primary', action: () => this.runComparison() }
+        ]);
+    }
+
+    runComparison() {
+        const idA = document.getElementById('compareProfileA').value;
+        const idB = document.getElementById('compareProfileB').value;
+        const profileA = this.profiles.find(p => p.id === idA);
+        const profileB = this.profiles.find(p => p.id === idB);
+
+        if (!profileA || !profileB) return;
+
+        const allSettings = this.getAllSettings();
+        const diffs = [];
+
+        for (const setting of allSettings) {
+            const valA = profileA.settings.hasOwnProperty(setting.id) ? profileA.settings[setting.id] : setting.defaultValue;
+            const valB = profileB.settings.hasOwnProperty(setting.id) ? profileB.settings[setting.id] : setting.defaultValue;
+
+            if (valA !== valB) {
+                let labelA, labelB;
+                if (setting.type === 'select') {
+                    labelA = setting.options.find(o => o.value === valA)?.label || valA;
+                    labelB = setting.options.find(o => o.value === valB)?.label || valB;
+                } else {
+                    labelA = `${valA}${setting.unit || ''}`;
+                    labelB = `${valB}${setting.unit || ''}`;
+                }
+                diffs.push({ name: setting.name, category: setting.category, labelA, labelB });
+            }
+        }
+
+        const resultEl = document.getElementById('compareResult');
+
+        if (diffs.length === 0) {
+            resultEl.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">These profiles have identical settings.</p>';
+            return;
+        }
+
+        resultEl.innerHTML = `
+            <div class="compare-summary" style="margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);">
+                Found <strong style="color: var(--nvidia-green)">${diffs.length}</strong> difference${diffs.length !== 1 ? 's' : ''}
+            </div>
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>Setting</th>
+                        <th>${this.escapeHtml(profileA.name)}</th>
+                        <th>${this.escapeHtml(profileB.name)}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${diffs.map(d => `
+                        <tr>
+                            <td class="compare-setting-name">${this.escapeHtml(d.name)}</td>
+                            <td class="compare-value-a">${this.escapeHtml(String(d.labelA))}</td>
+                            <td class="compare-value-b">${this.escapeHtml(String(d.labelB))}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    // ============================================
+    // Settings Search
+    // ============================================
+
+    filterSettingsBySearch(settings) {
+        if (!this.settingsSearch) return settings;
+        const q = this.settingsSearch.toLowerCase();
+        return settings.filter(s =>
+            s.name.toLowerCase().includes(q) ||
+            s.description.toLowerCase().includes(q) ||
+            s.id.toLowerCase().includes(q)
+        );
     }
 
     // ============================================
@@ -771,6 +1245,7 @@ class NvidiaProfileManager {
         document.getElementById('btnImport').addEventListener('click', () => this.importProfile());
         document.getElementById('btnExport').addEventListener('click', () => this.exportProfile());
         document.getElementById('btnApply').addEventListener('click', () => this.applyChanges());
+        document.getElementById('btnApplyGpu').addEventListener('click', () => this.applyToGpu());
         document.getElementById('btnRevert').addEventListener('click', () => this.revertChanges());
 
         // Search
@@ -818,6 +1293,21 @@ class NvidiaProfileManager {
                 this.applyPreset(btn.dataset.preset);
             });
         });
+
+        // Compare
+        document.getElementById('btnCompare').addEventListener('click', () => this.showCompareDialog());
+
+        // Save custom preset
+        document.getElementById('btnSavePreset').addEventListener('click', () => this.saveCurrentAsPreset());
+
+        // Settings search
+        document.getElementById('settingsSearch').addEventListener('input', (e) => {
+            this.settingsSearch = e.target.value;
+            this.renderSettings();
+        });
+
+        // Render custom presets on load
+        this.renderCustomPresets();
 
         // Modal close
         document.getElementById('modalClose').addEventListener('click', () => this.closeModal());
