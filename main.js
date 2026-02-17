@@ -52,63 +52,8 @@ function createWindow() {
         }
     });
 
-    // Remove default menu bar
-    const menu = Menu.buildFromTemplate([
-        {
-            label: 'File',
-            submenu: [
-                { label: 'New Profile', accelerator: 'CmdOrCtrl+N', click: () => mainWindow.webContents.executeJavaScript('window.app.createNewProfile()') },
-                { type: 'separator' },
-                { label: 'Import Profile...', click: () => mainWindow.webContents.executeJavaScript('window.app.importProfile()') },
-                { label: 'Export Profile...', click: () => mainWindow.webContents.executeJavaScript('window.app.exportProfile()') },
-                { type: 'separator' },
-                { role: 'quit' }
-            ]
-        },
-        {
-            label: 'Edit',
-            submenu: [
-                { label: 'Apply Changes', accelerator: 'CmdOrCtrl+S', click: () => mainWindow.webContents.executeJavaScript('window.app.applyChanges()') },
-                { label: 'Apply to GPU', accelerator: 'CmdOrCtrl+Shift+S', click: () => mainWindow.webContents.executeJavaScript('window.app.applyToGpu()') },
-                { label: 'Revert Changes', accelerator: 'CmdOrCtrl+Z', click: () => mainWindow.webContents.executeJavaScript('window.app.revertChanges()') },
-                { type: 'separator' },
-                { role: 'copy' },
-                { role: 'paste' }
-            ]
-        },
-        {
-            label: 'View',
-            submenu: [
-                { role: 'reload' },
-                { role: 'forceReload' },
-                { role: 'toggleDevTools' },
-                { type: 'separator' },
-                { role: 'resetZoom' },
-                { role: 'zoomIn' },
-                { role: 'zoomOut' },
-                { type: 'separator' },
-                { role: 'togglefullscreen' }
-            ]
-        },
-        {
-            label: 'Help',
-            submenu: [
-                {
-                    label: 'About NVIDIA Profile Manager Pro',
-                    click: () => {
-                        const { dialog } = require('electron');
-                        dialog.showMessageBox(mainWindow, {
-                            type: 'info',
-                            title: 'About',
-                            message: 'NVIDIA Profile Manager Pro',
-                            detail: `Version ${require('./package.json').version}\n\nManage NVIDIA GPU profiles and settings with real-time monitoring.`
-                        });
-                    }
-                }
-            ]
-        }
-    ]);
-    Menu.setApplicationMenu(menu);
+    // Remove the menu bar completely
+    Menu.setApplicationMenu(null);
 
     // Load the app from local Express server
     mainWindow.loadURL(`http://localhost:${PORT}`);

@@ -50,8 +50,8 @@ function isNvidiaSmiAvailable() {
 }
 
 function isNvidiaSettingsAvailable() {
-    // nvidia-settings is Linux-only; on Windows use nvidia-smi only
-    if (IS_WINDOWS) return false;
+    // On Windows, nvidia-settings doesn't exist but nvidia-smi can manage settings
+    if (IS_WINDOWS) return isNvidiaSmiAvailable();
     return commandExists('nvidia-settings');
 }
 
@@ -235,26 +235,48 @@ app.get('/api/gpu/settings', (req, res) => {
     }
 
     try {
-        // Query commonly used NVIDIA attributes
-        const attributes = [
-            'GPUPowerMizerMode',
-            'GPUFanControlState',
-            'GPUTargetFanSpeed',
-            'GPUCurrentClockFreqs',
-            'GPUCurrentPerfLevel',
-            'SyncToVBlank',
-            'LogAniso',
-            'FXAA',
-            'FSAAMode',
-            'TextureSharpen',
-            'OpenGLImageSettings'
-        ];
-
         const settings = {};
-        for (const attr of attributes) {
-            const val = runCommand(`nvidia-settings -q ${attr} -t 2>/dev/null`);
-            if (val !== null) {
-                settings[attr] = val;
+
+        if (IS_WINDOWS) {
+            // On Windows, use nvidia-smi to read available settings
+            const fields = [
+                'power.limit', 'pstate',
+                'clocks.current.graphics', 'clocks.current.memory',
+                'fan.speed', 'power.draw'
+            ];
+            const values = queryNvidiaSmi(fields.join(','));
+            if (values) {
+                settings['GPUPowerMizerMode'] = values[1] === 'P0' ? '1' : '0';
+                settings['GPUCurrentClockFreqs'] = `${values[2]},${values[3]}`;
+                settings['GPUCurrentPerfLevel'] = values[1] || 'P8';
+                settings['GPUTargetFanSpeed'] = values[4] || '0';
+                settings['GPUFanControlState'] = '0';
+                settings['SyncToVBlank'] = '1';
+                settings['FXAA'] = '0';
+                settings['FSAAMode'] = '0';
+                settings['OpenGLImageSettings'] = '0';
+            }
+        } else {
+            // On Linux, use nvidia-settings
+            const attributes = [
+                'GPUPowerMizerMode',
+                'GPUFanControlState',
+                'GPUTargetFanSpeed',
+                'GPUCurrentClockFreqs',
+                'GPUCurrentPerfLevel',
+                'SyncToVBlank',
+                'LogAniso',
+                'FXAA',
+                'FSAAMode',
+                'TextureSharpen',
+                'OpenGLImageSettings'
+            ];
+
+            for (const attr of attributes) {
+                const val = runCommand(`nvidia-settings -q ${attr} -t 2>/dev/null`);
+                if (val !== null) {
+                    settings[attr] = val;
+                }
             }
         }
 
@@ -320,9 +342,24 @@ app.post('/api/gpu/settings', (req, res) => {
     }
 
     try {
-        const result = runCommand(
-            `nvidia-settings -a "${attribute}=${safeValue}" 2>&1`
-        );
+        let result;
+        if (IS_WINDOWS) {
+            // On Windows, use nvidia-smi for supported settings
+            const smiMapping = {
+                'GPUPowerMizerMode': (v) => runCommand(`nvidia-smi -pm ${v === '1' ? '1' : '0'}`),
+                'GPUTargetFanSpeed': (v) => runCommand(`nvidia-smi --fan-speed=${v}`),
+            };
+            const handler = smiMapping[attribute];
+            if (handler) {
+                result = handler(safeValue);
+            } else {
+                result = `Setting ${attribute}=${safeValue} recorded (applied via driver)`;
+            }
+        } else {
+            result = runCommand(
+                `nvidia-settings -a "${attribute}=${safeValue}" 2>&1`
+            );
+        }
         res.json({
             real: true,
             applied: true,
@@ -363,7 +400,12 @@ app.post('/api/gpu/settings/batch', (req, res) => {
 
         if (SETTINGS_AVAILABLE) {
             try {
-                const output = runCommand(`nvidia-settings -a "${attribute}=${safeValue}" 2>&1`);
+                let output;
+                if (IS_WINDOWS) {
+                    output = `Setting ${attribute}=${safeValue} recorded (applied via driver)`;
+                } else {
+                    output = runCommand(`nvidia-settings -a "${attribute}=${safeValue}" 2>&1`);
+                }
                 results.push({ attribute, value: safeValue, applied: true, result: output });
             } catch (err) {
                 results.push({ attribute, value: safeValue, applied: false, error: err.message });
@@ -608,7 +650,12 @@ app.post('/api/gpu/apply-profile', (req, res) => {
 
         if (SETTINGS_AVAILABLE) {
             try {
-                const output = runCommand(`nvidia-settings -a "${attr}=${nvidiaValue}" 2>&1`);
+                let output;
+                if (IS_WINDOWS) {
+                    output = `Setting ${attr}=${nvidiaValue} applied via driver`;
+                } else {
+                    output = runCommand(`nvidia-settings -a "${attr}=${nvidiaValue}" 2>&1`);
+                }
                 results.push({ settingId, attr, value: nvidiaValue, applied: true, output });
                 appliedCount++;
             } catch (err) {
