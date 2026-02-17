@@ -28,20 +28,31 @@ if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+const IS_WINDOWS = process.platform === 'win32';
+
 function runCommand(cmd, timeout = 5000) {
     try {
-        return execSync(cmd, { encoding: 'utf8', timeout }).trim();
+        return execSync(cmd, { encoding: 'utf8', timeout, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
     } catch {
         return null;
     }
 }
 
+function commandExists(name) {
+    if (IS_WINDOWS) {
+        return runCommand(`where ${name}`) !== null;
+    }
+    return runCommand(`which ${name}`) !== null;
+}
+
 function isNvidiaSmiAvailable() {
-    return runCommand('which nvidia-smi') !== null;
+    return commandExists('nvidia-smi');
 }
 
 function isNvidiaSettingsAvailable() {
-    return runCommand('which nvidia-settings') !== null;
+    // nvidia-settings is Linux-only; on Windows use nvidia-smi only
+    if (IS_WINDOWS) return false;
+    return commandExists('nvidia-settings');
 }
 
 const GPU_AVAILABLE = isNvidiaSmiAvailable();
