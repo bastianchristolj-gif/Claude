@@ -2,25 +2,79 @@
   "name": "nvidia-profile-manager-pro",
   "version": "2.1.0",
   "description": "NVIDIA Profile Manager Pro with real GPU API integration",
-  "main": "server.js",
+  "main": "main.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
     "build": "node build.js",
-    "start:prod": "NODE_ENV=production node server.js"
+    "start:prod": "NODE_ENV=production node server.js",
+    "electron": "electron .",
+    "electron:build": "node build.js && electron-builder --win",
+    "electron:build:linux": "node build.js && electron-builder --linux",
+    "electron:build:all": "node build.js && electron-builder --win --linux"
   },
   "repository": {
     "type": "git",
     "url": "http://local_proxy@127.0.0.1:45000/git/bastianchristolj-gif/Claude"
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "NVIDIA Profile Manager Pro",
+    "email": "contact@nvidia-profile-manager.app"
+  },
+  "homepage": "https://github.com/bastianchristolj-gif/Claude",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1"
   },
   "devDependencies": {
-    "esbuild": "^0.27.3"
+    "esbuild": "^0.27.3",
+    "electron": "^40.4.1",
+    "electron-builder": "^26.7.0"
+  },
+  "build": {
+    "appId": "com.nvidia.profile-manager-pro",
+    "productName": "NVIDIA Profile Manager Pro",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "server.js",
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "data/",
+        "to": "data/",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NVIDIA Profile Manager Pro"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility",
+      "icon": "assets/icon.png"
+    }
   }
 }

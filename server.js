@@ -640,7 +640,7 @@ app.get('/', (req, res) => {
 // Start Server
 // ============================================
 
-app.listen(PORT, () => {
+const serverInstance = app.listen(PORT, () => {
     console.log(`\n========================================`);
     console.log(`  NVIDIA Profile Manager Pro API`);
     console.log(`  Running on http://localhost:${PORT}`);
@@ -648,3 +648,6 @@ app.listen(PORT, () => {
     console.log(`  nvidia-settings: ${SETTINGS_AVAILABLE}`);
     console.log(`========================================\n`);
 });
+
+// Export for Electron integration
+module.exports = serverInstance;

@@ -1,11 +1,15 @@
 /* ============================================
    NVIDIA Profile Manager Pro - Build Script
    Bundles + minifies frontend for production
+   Usage:
+     node build.js              → frontend build only
+     node build.js --package    → frontend build + electron-builder
    ============================================ */
 
 const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const DIST = path.join(__dirname, 'dist');
 
@@ -103,7 +107,30 @@ async function build() {
     console.log(`  Output: ${DIST}/\n`);
 }
 
-build().catch(err => {
-    console.error('Build failed:', err);
-    process.exit(1);
-});
+async function packageElectron() {
+    const args = process.argv.slice(2);
+    const shouldPackage = args.includes('--package');
+    const platform = args.includes('--linux') ? '--linux' : '--win';
+
+    if (shouldPackage) {
+        console.log('\n  Packaging Electron app...\n');
+        try {
+            execSync(`npx electron-builder ${platform}`, {
+                stdio: 'inherit',
+                cwd: __dirname
+            });
+            console.log('\n  Electron packaging complete!');
+            console.log(`  Output: ${path.join(__dirname, 'release')}/\n`);
+        } catch (err) {
+            console.error('  Electron packaging failed:', err.message);
+            process.exit(1);
+        }
+    }
+}
+
+build()
+    .then(() => packageElectron())
+    .catch(err => {
+        console.error('Build failed:', err);
+        process.exit(1);
+    });
