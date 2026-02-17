@@ -14,7 +14,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+
+const IS_PROD = process.env.NODE_ENV === 'production';
+const STATIC_DIR = IS_PROD ? path.join(__dirname, 'dist') : __dirname;
+app.use(express.static(STATIC_DIR));
 
 // ============================================
 // GPU Detection & Utilities
@@ -619,7 +622,7 @@ app.post('/api/gpu/apply-profile', (req, res) => {
 // ============================================
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(STATIC_DIR, 'index.html'));
 });
 
 // ============================================
