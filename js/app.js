@@ -23,6 +23,139 @@ class NvidiaProfileManager {
         this.updateCounts();
         this.startGpuMonitor();
         this.settingsSearch = '';
+        this.connectAPI();
+    }
+
+    // ============================================
+    // API Integration
+    // ============================================
+
+    async connectAPI() {
+        const api = window.nvidiaAPI;
+        if (!api) {
+            this.updateApiStatus(false);
+            return;
+        }
+
+        const status = await api.checkConnection();
+        if (status) {
+            this.updateApiStatus(true, status);
+            await this.loadRealGpuInfo();
+            await this.syncProfilesWithServer();
+            // Switch monitor to real data if GPU detected
+            if (api.gpuReal) {
+                this.useRealMonitor = true;
+            }
+        } else {
+            this.updateApiStatus(false);
+        }
+    }
+
+    updateApiStatus(connected, status) {
+        const dot = document.getElementById('apiDot');
+        const label = document.getElementById('apiStatus');
+        const gpuLabel = document.getElementById('gpuDetected');
+
+        if (connected) {
+            dot.className = 'api-dot online';
+            label.textContent = 'Connected';
+            if (status && status.gpu_available) {
+                gpuLabel.textContent = 'Detected';
+                gpuLabel.style.color = 'var(--nvidia-green)';
+            } else {
+                gpuLabel.textContent = 'Simulated';
+                gpuLabel.style.color = 'var(--text-warning)';
+            }
+        } else {
+            dot.className = 'api-dot offline';
+            label.textContent = 'Offline';
+            gpuLabel.textContent = 'Simulated';
+            gpuLabel.style.color = 'var(--text-muted)';
+        }
+    }
+
+    async loadRealGpuInfo() {
+        const api = window.nvidiaAPI;
+        if (!api) return;
+
+        const info = await api.getGpuInfo();
+        if (info) {
+            document.getElementById('gpuName').textContent = info.name || 'N/A';
+            document.getElementById('gpuVram').textContent = info.vram_total_gb || 'N/A';
+            document.getElementById('gpuDriver').textContent = info.driver_version || 'N/A';
+            document.getElementById('gpuCuda').textContent = info.cuda_version || 'N/A';
+            document.getElementById('driverVersion').textContent = info.driver_version || '---';
+
+            if (info.real) {
+                this.showToast('Real GPU detected: ' + info.name, 'success');
+                this.setStatus('Connected to ' + info.name);
+            }
+        }
+    }
+
+    async syncProfilesWithServer() {
+        const api = window.nvidiaAPI;
+        if (!api || !api.connected) return;
+
+        const result = await api.syncProfiles(this.profiles);
+        if (result.profiles) {
+            this.profiles = result.profiles;
+            localStorage.setItem('nvidia_profiles', JSON.stringify(this.profiles));
+            this.renderProfileList();
+            this.updateCounts();
+        }
+
+        // Also sync custom presets
+        const presetResult = await api.getCustomPresets();
+        if (presetResult.source === 'server' && Object.keys(presetResult.presets).length > 0) {
+            // Merge server presets with local
+            this.customPresets = { ...presetResult.presets, ...this.customPresets };
+            this.saveCustomPresets();
+            this.renderCustomPresets();
+        }
+    }
+
+    async applyToGpu() {
+        if (!this.selectedProfile) {
+            this.showToast('Select a profile first', 'warning');
+            return;
+        }
+
+        const api = window.nvidiaAPI;
+        if (!api || !api.connected) {
+            this.showToast('API server not connected. Start with: npm start', 'error');
+            return;
+        }
+
+        // Collect all current settings for this profile
+        const settingsToApply = {};
+        const allSettings = this.getAllSettings();
+        for (const setting of allSettings) {
+            const val = this.getSettingValue(setting.id);
+            if (val !== setting.defaultValue) {
+                settingsToApply[setting.id] = val;
+            }
+        }
+
+        this.setStatus('Applying settings to GPU...');
+        this.showToast('Sending settings to GPU driver...', 'info');
+
+        const result = await api.applyProfileToGpu(settingsToApply);
+
+        if (result.real) {
+            this.showToast(
+                `Applied ${result.applied_count}/${result.total} settings to GPU`,
+                result.applied_count > 0 ? 'success' : 'warning'
+            );
+            this.addChangeLogEntry('GPU Apply', `${result.applied_count} settings`);
+        } else {
+            const mappedCount = result.results ? result.results.filter(r => r.attr).length : 0;
+            this.showToast(
+                `GPU driver not available. ${mappedCount} settings mapped but not applied.`,
+                'warning'
+            );
+        }
+        this.setStatus('Ready');
     }
 
     // ============================================
@@ -44,6 +177,11 @@ class NvidiaProfileManager {
 
     saveProfiles() {
         localStorage.setItem('nvidia_profiles', JSON.stringify(this.profiles));
+        // Also persist to server if connected
+        const api = window.nvidiaAPI;
+        if (api && api.connected) {
+            api.saveProfiles(this.profiles);
+        }
     }
 
     getProfileIcon(profile) {
@@ -435,23 +573,40 @@ class NvidiaProfileManager {
     }
 
     // ============================================
-    // GPU Monitor (Simulated)
+    // GPU Monitor (Real + Simulated fallback)
     // ============================================
 
     startGpuMonitor() {
+        this.useRealMonitor = false;
         this.gpuState = {
             usage: 15, vram: 2.1, temp: 42, coreClock: 210,
-            fan: 30, power: 45
+            fan: 30, power: 45, vramTotal: 24
         };
         this.updateGpuMonitor();
         this.gpuMonitorInterval = setInterval(() => this.updateGpuMonitor(), 2000);
     }
 
-    updateGpuMonitor() {
+    async updateGpuMonitor() {
         const s = this.gpuState;
-        const hasActiveProfile = this.selectedProfile && this.selectedProfile.type === 'game';
 
-        // Simulate realistic fluctuations
+        // Try real data from API
+        if (this.useRealMonitor && window.nvidiaAPI && window.nvidiaAPI.connected) {
+            const data = await window.nvidiaAPI.getGpuMonitor();
+            if (data) {
+                s.usage = data.gpu_utilization || 0;
+                s.vram = parseFloat(data.memory_used) || 0;
+                s.vramTotal = (parseInt(data.memory_total) || 24576) / 1024;
+                s.temp = data.temperature || 0;
+                s.coreClock = data.core_clock || 0;
+                s.fan = data.fan_speed || 0;
+                s.power = parseFloat(data.power_draw) || 0;
+                this.renderMonitorBars(s);
+                return;
+            }
+        }
+
+        // Fallback: simulated data
+        const hasActiveProfile = this.selectedProfile && this.selectedProfile.type === 'game';
         const baseUsage = hasActiveProfile ? 72 : 15;
         const baseVram = hasActiveProfile ? 14.2 : 2.1;
         const baseTemp = hasActiveProfile ? 71 : 42;
@@ -461,32 +616,35 @@ class NvidiaProfileManager {
 
         s.usage = Math.min(100, Math.max(0, baseUsage + (Math.random() - 0.5) * 12));
         s.vram = Math.min(24, Math.max(0.5, baseVram + (Math.random() - 0.5) * 1.5));
+        s.vramTotal = 24;
         s.temp = Math.min(95, Math.max(30, baseTemp + (Math.random() - 0.5) * 6));
         s.coreClock = Math.max(210, baseClock + Math.round((Math.random() - 0.5) * 80));
         s.fan = Math.min(100, Math.max(25, baseFan + (Math.random() - 0.5) * 8));
         s.power = Math.min(450, Math.max(30, basePower + (Math.random() - 0.5) * 30));
 
-        // Update bars
+        this.renderMonitorBars(s);
+    }
+
+    renderMonitorBars(s) {
         const setBar = (id, pct) => {
             const el = document.getElementById(id);
-            if (el) el.style.width = pct + '%';
+            if (el) el.style.width = Math.min(100, Math.max(0, pct)) + '%';
         };
 
         setBar('monGpuUsage', s.usage);
-        setBar('monVram', (s.vram / 24) * 100);
+        setBar('monVram', (s.vram / s.vramTotal) * 100);
         setBar('monTemp', (s.temp / 95) * 100);
         setBar('monCoreClock', (s.coreClock / 2800) * 100);
         setBar('monFan', s.fan);
         setBar('monPower', (s.power / 450) * 100);
 
-        // Update values
         const setVal = (id, text) => {
             const el = document.getElementById(id);
             if (el) el.textContent = text;
         };
 
         setVal('monGpuUsageVal', Math.round(s.usage) + '%');
-        setVal('monVramVal', s.vram.toFixed(1) + '/24 GB');
+        setVal('monVramVal', s.vram.toFixed(1) + '/' + Math.round(s.vramTotal) + ' GB');
         setVal('monTempVal', Math.round(s.temp) + '\u00B0C');
         setVal('monCoreClockVal', Math.round(s.coreClock) + ' MHz');
         setVal('monFanVal', Math.round(s.fan) + '%');
@@ -520,6 +678,10 @@ class NvidiaProfileManager {
 
     saveCustomPresets() {
         localStorage.setItem('nvidia_custom_presets', JSON.stringify(this.customPresets));
+        const api = window.nvidiaAPI;
+        if (api && api.connected) {
+            api.saveCustomPresets(this.customPresets);
+        }
     }
 
     saveCurrentAsPreset() {
@@ -1083,6 +1245,7 @@ class NvidiaProfileManager {
         document.getElementById('btnImport').addEventListener('click', () => this.importProfile());
         document.getElementById('btnExport').addEventListener('click', () => this.exportProfile());
         document.getElementById('btnApply').addEventListener('click', () => this.applyChanges());
+        document.getElementById('btnApplyGpu').addEventListener('click', () => this.applyToGpu());
         document.getElementById('btnRevert').addEventListener('click', () => this.revertChanges());
 
         // Search

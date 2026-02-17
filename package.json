@@ -1,0 +1,21 @@
+{
+  "name": "nvidia-profile-manager-pro",
+  "version": "2.1.0",
+  "description": "NVIDIA Profile Manager Pro with real GPU API integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:45000/git/bastianchristolj-gif/Claude"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}

@@ -18,6 +18,15 @@
             <h1 class="titlebar-title">NVIDIA Profile Manager <span class="version">Pro v2.0</span></h1>
         </div>
         <div class="titlebar-right">
+            <div class="driver-badge api-badge" id="apiBadge" title="API Connection Status">
+                <span class="api-dot offline" id="apiDot"></span>
+                <span class="badge-label">API</span>
+                <span class="badge-value" id="apiStatus">Offline</span>
+            </div>
+            <div class="driver-badge" id="gpuBadge" title="GPU Detection">
+                <span class="badge-label">GPU</span>
+                <span class="badge-value" id="gpuDetected">Simulated</span>
+            </div>
             <div class="driver-badge">
                 <span class="badge-label">Driver</span>
                 <span class="badge-value" id="driverVersion">560.94</span>
@@ -60,9 +69,13 @@
                 <span>Compare</span>
             </button>
             <div class="toolbar-separator"></div>
-            <button class="toolbar-btn primary" id="btnApply" title="Apply Changes">
+            <button class="toolbar-btn primary" id="btnApply" title="Apply Changes (Ctrl+S)">
                 <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 <span>Apply</span>
+            </button>
+            <button class="toolbar-btn gpu-apply-btn" id="btnApplyGpu" title="Apply to GPU via nvidia-settings">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                <span>Apply to GPU</span>
             </button>
             <button class="toolbar-btn" id="btnRevert" title="Revert Changes">
                 <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
@@ -320,6 +333,7 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="js/data.js"></script>
+    <script src="js/api.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

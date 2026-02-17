@@ -169,6 +169,42 @@ body {
     font-family: 'Consolas', 'Courier New', monospace;
 }
 
+/* API Connection Badge */
+.api-badge {
+    cursor: default;
+}
+
+.api-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.api-dot.online {
+    background: var(--nvidia-green);
+    box-shadow: 0 0 6px var(--nvidia-green);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.api-dot.offline {
+    background: var(--text-muted);
+}
+
+/* GPU Apply Button */
+.gpu-apply-btn {
+    color: #3498db !important;
+    border-color: rgba(52, 152, 219, 0.3) !important;
+}
+
+.gpu-apply-btn:hover {
+    background: rgba(52, 152, 219, 0.1) !important;
+    border-color: #3498db !important;
+    color: #3498db !important;
+    box-shadow: 0 0 12px rgba(52, 152, 219, 0.15);
+}
+
 /* ============================================
    Toolbar
    ============================================ */
