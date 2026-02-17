@@ -40,6 +40,41 @@
     gap: 6px;
 }
 
+.settings-search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--transition);
+}
+
+.settings-search-box:focus-within {
+    border-color: var(--nvidia-green);
+    box-shadow: 0 0 0 2px var(--nvidia-green-alpha);
+}
+
+.settings-search-box svg {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.settings-search-box input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: inherit;
+    width: 140px;
+}
+
+.settings-search-box input::placeholder {
+    color: var(--text-muted);
+}
+
 .settings-view-select {
     padding: 5px 28px 5px 10px;
     background: var(--bg-input);
@@ -359,6 +394,100 @@
     font-family: 'Consolas', 'Courier New', monospace;
 }
 
+/* GPU Monitor */
+.monitor-live-badge {
+    font-size: 8px;
+    font-weight: 700;
+    color: #ff4757;
+    background: rgba(255, 71, 87, 0.15);
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    animation: livePulse 1.5s ease-in-out infinite;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.gpu-monitor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.monitor-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.monitor-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    min-width: 52px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.monitor-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-input);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.monitor-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease, background 0.5s ease;
+}
+
+.gpu-usage-bar {
+    background: var(--nvidia-green);
+}
+
+.vram-bar {
+    background: #3498db;
+}
+
+.temp-bar {
+    background: var(--nvidia-green);
+}
+
+.temp-bar.warn {
+    background: var(--text-warning);
+}
+
+.temp-bar.critical {
+    background: var(--text-danger);
+}
+
+.clock-bar {
+    background: #9b59b6;
+}
+
+.fan-bar {
+    background: #1abc9c;
+}
+
+.power-bar {
+    background: #e67e22;
+}
+
+.monitor-value {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'Consolas', 'Courier New', monospace;
+    min-width: 48px;
+    text-align: right;
+}
+
 /* Setting Details */
 .setting-details {
     min-height: 60px;
@@ -485,4 +614,111 @@
 .changelog-time {
     font-size: 10px;
     color: var(--text-muted);
+}
+
+/* Custom Presets */
+.custom-preset-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.custom-preset-item .preset-btn {
+    flex: 1;
+    padding: 6px 8px;
+}
+
+.custom-preset-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.custom-preset-count {
+    font-size: 9px;
+    background: var(--nvidia-green-alpha);
+    color: var(--nvidia-green);
+    padding: 0 5px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.custom-preset-delete {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition);
+    flex-shrink: 0;
+}
+
+.custom-preset-delete:hover {
+    color: var(--text-danger);
+    background: rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+}
+
+.save-preset-btn {
+    border-style: dashed !important;
+    border-color: var(--border-secondary) !important;
+    justify-content: center;
+    font-size: 10px !important;
+    color: var(--text-muted) !important;
+}
+
+.save-preset-btn:hover {
+    border-color: var(--nvidia-green) !important;
+    color: var(--nvidia-green) !important;
+}
+
+/* Compare Table */
+.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.compare-table th {
+    text-align: left;
+    padding: 6px 8px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.compare-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border-primary);
+    color: var(--text-primary);
+}
+
+.compare-table tr:hover td {
+    background: var(--bg-surface-hover);
+}
+
+.compare-setting-name {
+    color: var(--text-secondary) !important;
+    font-weight: 500;
+}
+
+.compare-value-a {
+    color: var(--nvidia-green) !important;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.compare-value-b {
+    color: var(--text-warning) !important;
+    font-family: 'Consolas', 'Courier New', monospace;
 }

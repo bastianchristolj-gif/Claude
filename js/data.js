@@ -497,6 +497,117 @@ const NVIDIA_SETTINGS = {
             }
         ]
     },
+    rtx: {
+        label: "RTX & AI",
+        settings: [
+            {
+                id: "0x10AA0001",
+                name: "DLSS Mode",
+                description: "NVIDIA Deep Learning Super Sampling uses AI to boost frame rates while maintaining visual quality. Requires game support and RTX GPU.",
+                type: "select",
+                options: [
+                    { value: 0, label: "Off" },
+                    { value: 1, label: "Auto" },
+                    { value: 2, label: "Quality" },
+                    { value: 3, label: "Balanced" },
+                    { value: 4, label: "Performance" },
+                    { value: 5, label: "Ultra Performance" }
+                ],
+                defaultValue: 0,
+                category: "rtx"
+            },
+            {
+                id: "0x10AA0002",
+                name: "DLSS Sharpness",
+                description: "Controls the sharpening applied after DLSS upscaling. Higher values produce sharper images but may introduce artifacts.",
+                type: "number",
+                min: 0,
+                max: 100,
+                step: 5,
+                defaultValue: 50,
+                unit: "%",
+                category: "rtx"
+            },
+            {
+                id: "0x10AA0003",
+                name: "Ray Tracing",
+                description: "Global ray tracing toggle. Enables hardware-accelerated ray tracing for supported applications using RT cores.",
+                type: "select",
+                options: [
+                    { value: 0, label: "Off" },
+                    { value: 1, label: "On" }
+                ],
+                defaultValue: 1,
+                category: "rtx"
+            },
+            {
+                id: "0x10AA0004",
+                name: "Ray Tracing Quality",
+                description: "Controls the quality of ray-traced effects. Higher settings increase ray count per pixel for more accurate reflections and shadows.",
+                type: "select",
+                options: [
+                    { value: 0, label: "Low" },
+                    { value: 1, label: "Medium" },
+                    { value: 2, label: "High" },
+                    { value: 3, label: "Ultra" },
+                    { value: 4, label: "Psycho" }
+                ],
+                defaultValue: 2,
+                category: "rtx"
+            },
+            {
+                id: "0x10AA0005",
+                name: "Frame Generation",
+                description: "DLSS 3 Frame Generation uses AI to create additional frames between rendered frames, dramatically boosting FPS. Requires RTX 40-series.",
+                type: "select",
+                options: [
+                    { value: 0, label: "Off" },
+                    { value: 1, label: "On" }
+                ],
+                defaultValue: 0,
+                category: "rtx"
+            },
+            {
+                id: "0x10AA0006",
+                name: "Resizable BAR",
+                description: "Allows the CPU to access the full GPU memory at once instead of in 256MB chunks. Can improve performance in some games.",
+                type: "select",
+                options: [
+                    { value: 0, label: "Off" },
+                    { value: 1, label: "On" }
+                ],
+                defaultValue: 1,
+                category: "rtx"
+            },
+            {
+                id: "0x10AA0007",
+                name: "DLSS Ray Reconstruction",
+                description: "Uses AI to denoise ray-traced effects more effectively than traditional denoisers. Produces higher quality RT reflections and lighting.",
+                type: "select",
+                options: [
+                    { value: 0, label: "Off" },
+                    { value: 1, label: "On" }
+                ],
+                defaultValue: 0,
+                category: "rtx"
+            },
+            {
+                id: "0x10AA0008",
+                name: "RTX Video Super Resolution",
+                description: "Enhances lower-resolution video content using AI upscaling via RTX Tensor cores. Works with supported browsers and video players.",
+                type: "select",
+                options: [
+                    { value: 0, label: "Off" },
+                    { value: 1, label: "Quality (1)" },
+                    { value: 2, label: "Quality (2)" },
+                    { value: 3, label: "Quality (3)" },
+                    { value: 4, label: "Quality (4 - Highest)" }
+                ],
+                defaultValue: 0,
+                category: "rtx"
+            }
+        ]
+    },
     other: {
         label: "Other",
         settings: [
@@ -604,7 +715,12 @@ const DEFAULT_PROFILES = [
             "0x1057EB71": 16,
             "0x00A879CF": 4,
             "0x00BB3412": 2,
-            "0x0040AB89": 2
+            "0x0040AB89": 2,
+            "0x10AA0001": 3,
+            "0x10AA0003": 1,
+            "0x10AA0004": 3,
+            "0x10AA0005": 1,
+            "0x10AA0007": 1
         }
     },
     {
@@ -660,7 +776,11 @@ const DEFAULT_PROFILES = [
             "0x1057EB71": 16,
             "0x00A879CF": 4,
             "0x0040AB89": 2,
-            "0x10F9DC81": 3
+            "0x10F9DC81": 3,
+            "0x10AA0001": 2,
+            "0x10AA0003": 1,
+            "0x10AA0004": 3,
+            "0x10AA0007": 1
         }
     },
     {
@@ -795,7 +915,11 @@ const PRESETS = {
             "0x00AE1234": 2,
             "0x00EE7890": 0,
             "0x00CEB891": 1,
-            "0x0056EF12": 1
+            "0x0056EF12": 1,
+            "0x10AA0001": 4,
+            "0x10AA0003": 0,
+            "0x10AA0005": 1,
+            "0x10AA0006": 1
         }
     },
     quality: {
@@ -814,7 +938,12 @@ const PRESETS = {
             "0x00EE7890": 3,
             "0x00CEB891": 0,
             "0x0056EF12": 0,
-            "0x00E73211": 5
+            "0x00E73211": 5,
+            "0x10AA0001": 2,
+            "0x10AA0003": 1,
+            "0x10AA0004": 3,
+            "0x10AA0005": 0,
+            "0x10AA0007": 1
         }
     },
     balanced: {
@@ -829,7 +958,11 @@ const PRESETS = {
             "0x0040AB89": 1,
             "0x00E73211": 3,
             "0x209746A1": 0,
-            "0x00BB3412": 0
+            "0x00BB3412": 0,
+            "0x10AA0001": 3,
+            "0x10AA0003": 1,
+            "0x10AA0004": 2,
+            "0x10AA0006": 1
         }
     }
 };
